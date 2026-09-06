@@ -24,5 +24,8 @@ export const config = {
     apiKey: process.env.OPENAI_API_KEY || '',
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
   },
+  jwt: {
+    secret: process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-secret-key-for-jest' : ''),
+    expiresIn: '24h',
+  },
 };
-

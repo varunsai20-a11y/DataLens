@@ -7,6 +7,7 @@ import { globalErrorHandler } from './middleware/errorHandler';
 import { healthCheck, readyCheck } from './controllers/healthController';
 import datasetRoutes from './routes/datasetRoutes';
 import analysisRoutes from './routes/analysisRoutes';
+import authRoutes from './routes/authRoutes';
 import { handleEngineCallback, getVersionAnalysis } from './controllers/analysisController';
 
 const app = express();
@@ -27,7 +28,9 @@ app.get('/api/health', healthCheck);
 app.get('/api/ready', readyCheck);
 
 // API v1 Routes
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/datasets', datasetRoutes);
+
 app.use('/api/v1/analysis', analysisRoutes);
 app.post('/api/v1/engine/callback', handleEngineCallback);
 app.get('/api/v1/dataset-versions/:versionId/analysis', getVersionAnalysis);
