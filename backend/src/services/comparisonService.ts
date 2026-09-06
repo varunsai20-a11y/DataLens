@@ -67,24 +67,38 @@ export class ComparisonService {
     // 3. Call Python Data Engine for diff and drift calculations
     logger.info(`Calling Python Data Engine POST /compare for ${baseVersionId} vs ${targetVersionId}`);
 
-    const res = await fetch(`${config.dataEngineUrl}/compare`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        base_file_path: baseVersion.storage_path,
-        target_file_path: targetVersion.storage_path,
-        base_report: {
-          summary: baseAnalysis.summary,
-          columns: baseAnalysis.profiling,
-          score: { overall: Number(baseAnalysis.overall_quality_score) },
-        },
-        target_report: {
-          summary: targetAnalysis.summary,
-          columns: targetAnalysis.profiling,
-          score: { overall: Number(targetAnalysis.overall_quality_score) },
-        },
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    let res: Response;
+    try {
+      res = await fetch(`${config.dataEngineUrl}/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_file_path: baseVersion.storage_path,
+          target_file_path: targetVersion.storage_path,
+          base_report: {
+            summary: baseAnalysis.summary,
+            columns: baseAnalysis.profiling,
+            score: { overall: Number(baseAnalysis.overall_quality_score) },
+          },
+          target_report: {
+            summary: targetAnalysis.summary,
+            columns: targetAnalysis.profiling,
+            score: { overall: Number(targetAnalysis.overall_quality_score) },
+          },
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      if (fetchErr.name === 'AbortError') {
+        throw new Error('Data Engine comparison request timed out after 30 seconds');
+      }
+      throw fetchErr;
+    }
+    clearTimeout(timeoutId);
 
     if (!res.ok) {
       const errBody = (await res.json().catch(() => ({}))) as any;

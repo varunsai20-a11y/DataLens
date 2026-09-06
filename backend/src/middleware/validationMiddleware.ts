@@ -37,6 +37,7 @@ export const validateRequest = (schemas: ValidationSchemas) => {
         return res.status(400).json({
           error: 'INVALID_INPUT',
           message,
+          requestId: req.headers['x-request-id'],
         });
       }
       next(err);

@@ -9,7 +9,7 @@ export const config = {
   get storagePath() {
     return process.env.STORAGE_PATH || './storage';
   },
-  dataEngineUrl: process.env.DATA_ENGINE_URL || 'http://data-engine:5000',
+  dataEngineUrl: process.env.ENGINE_URL || process.env.DATA_ENGINE_URL || 'http://data-engine:5000',
   maxUploadSizeBytes: parseInt(process.env.MAX_UPLOAD_SIZE_MB || '100', 10) * 1024 * 1024,
   postgres: {
     host: process.env.POSTGRES_HOST || 'localhost',

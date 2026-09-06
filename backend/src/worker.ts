@@ -136,8 +136,11 @@ worker.on('failed', (job, err) => {
   logger.error(`BullMQ Job ${job?.id} failed permanently: ${err.message}`);
 });
 
-process.on('SIGINT', async () => {
-  logger.info('Shutting down BullMQ worker...');
+const shutdownWorker = async (signal: string) => {
+  logger.info(`${signal} received. Shutting down BullMQ worker...`);
   await worker.close();
   process.exit(0);
-});
+};
+
+process.on('SIGTERM', () => shutdownWorker('SIGTERM'));
+process.on('SIGINT', () => shutdownWorker('SIGINT'));

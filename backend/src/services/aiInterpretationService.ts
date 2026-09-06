@@ -254,15 +254,18 @@ STRICT CONSTRAINTS:
 
     logger.info(`Sending sanitized input to OpenAI (${config.openai.model}) for dataset ${sanitizedInput.dataset_name} v${sanitizedInput.version}`);
 
-    const response = await this.openaiClient.chat.completions.create({
-      model: config.openai.model,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.2,
-    });
+    const response = await this.openaiClient.chat.completions.create(
+      {
+        model: config.openai.model,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: 0.2,
+      },
+      { timeout: 30000 }
+    );
 
     const content = response.choices[0]?.message?.content;
     if (!content) {

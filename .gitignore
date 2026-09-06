@@ -1,13 +1,17 @@
 # Git Ignore
 node_modules
 dist
+build
 .env
 .env.local
 .env.*.local
+*.log
+*.log*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .DS_Store
+
 # Python
 __pycache__/
 *.py[cod]
@@ -15,10 +19,13 @@ __pycache__/
 .venv
 venv/
 ENV/
-# Docker
-.docker-logs/
-# Frontend
-build/
-.next/
-# IDE / Scratch
+.pytest_cache/
+
+# Storage & Temporary Files
+storage/
+/app/storage/
 scratch/
+
+# Docker & Test Coverage
+.docker-logs/
+coverage/

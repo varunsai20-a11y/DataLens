@@ -40,7 +40,7 @@ router.get('/comparisons/:comparison_id/schema-drift', validateRequest(compariso
 router.get('/comparisons/:comparison_id/distribution-drift', validateRequest(comparisonParamSchema) as any, requireDatasetOwnership as any, getDistributionDrift as any);
 
 // Dataset CRUD Routes
-router.post('/', generalRateLimiter as any, validateRequest(createDatasetSchema) as any, createDataset as any);
+router.post('/', generalRateLimiter as any, uploadMiddleware.single('file'), validateRequest(createDatasetSchema) as any, createDataset as any);
 router.get('/', listDatasets as any);
 router.get('/:datasetId', validateRequest(datasetIdParamSchema) as any, requireDatasetOwnership as any, getDataset as any);
 router.delete('/:datasetId', generalRateLimiter as any, validateRequest(datasetIdParamSchema) as any, requireDatasetOwnership as any, deleteDataset as any);
