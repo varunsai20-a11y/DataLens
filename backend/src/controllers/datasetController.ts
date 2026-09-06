@@ -8,6 +8,7 @@ import { config } from '../config';
 import { datasetService } from '../services/datasetService';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import logger from '../utils/logger';
+import { sanitizeFilename, isPathInsideDir, validateFileContent } from '../utils/fileValidation';
 
 // Ensure storage directory exists
 if (!fs.existsSync(config.storagePath)) {
@@ -36,7 +37,9 @@ export const uploadMiddleware = multer({
     fileSize: config.maxUploadSizeBytes,
   },
   fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
+    const cleanName = sanitizeFilename(file.originalname);
+    file.originalname = cleanName;
+    const ext = path.extname(cleanName).toLowerCase();
     if (!['.csv', '.parquet', '.pq'].includes(ext)) {
       return cb(new Error('INVALID_FILE_TYPE: Only CSV (.csv) and Parquet (.parquet) files are supported.'));
     }
@@ -155,28 +158,51 @@ export const uploadVersion = async (req: AuthenticatedRequest, res: Response, ne
   const filePath = file.path;
 
   try {
-    // 1. Verify file size > 0
-    const stats = fs.statSync(filePath);
-    if (stats.size === 0) {
-      fs.unlinkSync(filePath); // Clean up
+    // 1. Verify storage path is strictly inside configured storage directory
+    if (!isPathInsideDir(filePath, config.storagePath)) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       return res.status(400).json({
-        error: 'EMPTY_FILE',
-        message: 'The uploaded CSV file is empty.',
+        error: 'INVALID_PATH',
+        message: 'Uploaded file storage path is invalid.',
       });
     }
 
-    // 2. Calculate SHA-256 checksum
+    // 2. Verify file size > 0
+    const stats = fs.statSync(filePath);
+    if (stats.size === 0) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(400).json({
+        error: 'EMPTY_FILE',
+        message: 'The uploaded dataset file is empty (0 bytes).',
+      });
+    }
+
+    // 3. Content signature & magic byte validation
+    const ext = path.extname(file.originalname).toLowerCase();
+    const contentCheck = validateFileContent(filePath, ext, stats.size);
+    if (!contentCheck.valid) {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      return res.status(400).json({
+        error: 'INVALID_FILE_CONTENT',
+        message: contentCheck.reason || 'Invalid file content.',
+      });
+    }
+
+    // 4. Calculate SHA-256 checksum
     const checksum = await calculateSha256(filePath);
 
-    // 3. Register version in DB
+    // 5. Register version in DB
+    const cleanOriginalName = sanitizeFilename(file.originalname);
+    const mimeType = file.mimetype || (ext === '.csv' ? 'text/csv' : 'application/x-parquet');
+
     const version = await datasetService.createDatasetVersion(
       datasetId,
-      path.basename(file.originalname), // Sanitize original filename
+      cleanOriginalName,
       file.filename,
       filePath,
       checksum,
       stats.size,
-      file.mimetype || 'text/csv',
+      mimeType,
       userId
     );
 

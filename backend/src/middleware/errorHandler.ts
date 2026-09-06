@@ -28,9 +28,14 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
     message = 'Malformed JSON in request body.';
   } else if (err instanceof multer.MulterError) {
     statusCode = 400;
-    message = `File upload error: ${err.message}`;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'File size exceeds maximum allowed upload limit.';
+    } else {
+      message = `File upload error: ${err.message}`;
+    }
   } else if (err.message && err.message.startsWith('INVALID_FILE_TYPE')) {
     statusCode = 400;
+    message = err.message.replace(/^INVALID_FILE_TYPE:\s*/, '');
   }
 
   logger.error(`${statusCode} - ${message} - ${req.method} ${req.path}`, {
