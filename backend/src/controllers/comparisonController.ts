@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { comparisonService } from '../services/comparisonService';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
-export const runComparison = async (req: Request, res: Response, next: NextFunction) => {
+export const runComparison = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id: datasetId } = req.params;
     const { base_version_id: baseVersionId, target_version_id: targetVersionId } = req.body;
@@ -13,7 +14,8 @@ export const runComparison = async (req: Request, res: Response, next: NextFunct
       });
     }
 
-    const comparison = await comparisonService.compareVersions(datasetId, baseVersionId, targetVersionId);
+    const userId = req.user?.id;
+    const comparison = await comparisonService.compareVersions(datasetId, baseVersionId, targetVersionId, userId);
 
     res.status(200).json({
       status: 'SUCCESS',
@@ -21,6 +23,9 @@ export const runComparison = async (req: Request, res: Response, next: NextFunct
       comparison,
     });
   } catch (err: any) {
+    if (err.message.includes('FORBIDDEN')) {
+      return res.status(403).json({ error: 'FORBIDDEN', message: err.message });
+    }
     if (err.message.includes('not found') || err.message.includes('missing')) {
       return res.status(404).json({ error: 'NOT_FOUND', message: err.message });
     }

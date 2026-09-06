@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { datasetService } from '../services/datasetService';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import logger from '../utils/logger';
 
 // Ensure storage directory exists
@@ -16,7 +17,11 @@ if (!fs.existsSync(config.storagePath)) {
 // Multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, config.storagePath);
+    const dest = config.storagePath;
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -49,7 +54,7 @@ function calculateSha256(filePath: string): Promise<string> {
   });
 }
 
-export const createDataset = async (req: Request, res: Response, next: NextFunction) => {
+export const createDataset = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { name, description } = req.body;
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -66,7 +71,8 @@ export const createDataset = async (req: Request, res: Response, next: NextFunct
       });
     }
 
-    const dataset = await datasetService.createDataset(name, description);
+    const userId = req.user?.id;
+    const dataset = await datasetService.createDataset(name, description, userId);
     res.status(201).json({
       status: 'SUCCESS',
       dataset,
@@ -76,9 +82,10 @@ export const createDataset = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const listDatasets = async (req: Request, res: Response, next: NextFunction) => {
+export const listDatasets = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const datasets = await datasetService.listDatasets();
+    const userId = req.user?.id;
+    const datasets = await datasetService.listDatasets(userId);
     res.status(200).json({
       status: 'SUCCESS',
       datasets,
@@ -88,10 +95,11 @@ export const listDatasets = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const getDataset = async (req: Request, res: Response, next: NextFunction) => {
+export const getDataset = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { datasetId } = req.params;
-    const result = await datasetService.getDatasetById(datasetId);
+    const datasetId = req.params.datasetId || req.params.id;
+    const userId = req.user?.id;
+    const result = await datasetService.getDatasetById(datasetId, userId);
 
     if (!result) {
       return res.status(404).json({
@@ -110,9 +118,32 @@ export const getDataset = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const uploadVersion = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteDataset = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const datasetId = req.params.datasetId || req.params.id;
+    const userId = req.user?.id;
+
+    const deleted = await datasetService.deleteDataset(datasetId, userId);
+    if (!deleted) {
+      return res.status(404).json({
+        error: 'NOT_FOUND',
+        message: `Dataset with ID '${datasetId}' was not found.`,
+      });
+    }
+
+    res.status(200).json({
+      status: 'SUCCESS',
+      message: `Dataset '${datasetId}' deleted successfully.`,
+    });
+  } catch (err: any) {
+    next(err);
+  }
+};
+
+export const uploadVersion = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const file = req.file;
-  const { datasetId } = req.params;
+  const datasetId = req.params.datasetId || req.params.id;
+  const userId = req.user?.id;
 
   if (!file) {
     return res.status(400).json({
@@ -145,7 +176,8 @@ export const uploadVersion = async (req: Request, res: Response, next: NextFunct
       filePath,
       checksum,
       stats.size,
-      file.mimetype || 'text/csv'
+      file.mimetype || 'text/csv',
+      userId
     );
 
     res.status(201).json({

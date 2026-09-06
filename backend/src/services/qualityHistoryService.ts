@@ -25,7 +25,14 @@ function classifyHealthStatus(score: number): string {
 }
 
 export class QualityHistoryService {
-  async getDatasetHistory(datasetId: string): Promise<QualityHistoryItem[]> {
+  async getDatasetHistory(datasetId: string, userId?: string): Promise<QualityHistoryItem[]> {
+    if (userId) {
+      const ownerRes = await pool.query(`SELECT user_id FROM datasets WHERE id = $1`, [datasetId]);
+      if (ownerRes.rows.length === 0 || ownerRes.rows[0].user_id !== userId) {
+        throw new Error('FORBIDDEN: You do not have permission to access history for this dataset.');
+      }
+    }
+
     const res = await pool.query(
       `SELECT
          v.id AS version_id,

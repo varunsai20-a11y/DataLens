@@ -276,9 +276,9 @@ STRICT CONSTRAINTS:
   /**
    * Get existing AI interpretation or generate a new one (cached in analysis_results.ai_summary).
    */
-  public async getOrGenerateInterpretation(datasetId: string, versionId?: string): Promise<AIInterpretation> {
+  public async getOrGenerateInterpretation(datasetId: string, versionId?: string, userId?: string): Promise<AIInterpretation> {
     // 1. Fetch dataset & version info
-    const datasetInfo = await datasetService.getDatasetById(datasetId);
+    const datasetInfo = await datasetService.getDatasetById(datasetId, userId);
     if (!datasetInfo) {
       throw new Error(`Dataset with ID '${datasetId}' was not found.`);
     }

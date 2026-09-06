@@ -36,10 +36,17 @@ export interface AnalysisResultRecord {
 }
 
 export class AnalysisService {
-  async createJob(versionId: string): Promise<{ job: AnalysisJob; version: DatasetVersion }> {
+  async createJob(versionId: string, userId?: string): Promise<{ job: AnalysisJob; version: DatasetVersion }> {
     const version = await datasetService.getDatasetVersionById(versionId);
     if (!version) {
       throw new Error('Dataset version not found');
+    }
+
+    if (userId) {
+      const ownerRes = await pool.query(`SELECT user_id FROM datasets WHERE id = $1`, [version.dataset_id]);
+      if (ownerRes.rows.length === 0 || ownerRes.rows[0].user_id !== userId) {
+        throw new Error('FORBIDDEN: You do not have permission to analyze this dataset.');
+      }
     }
 
     if (!fs.existsSync(version.storage_path)) {
@@ -63,7 +70,7 @@ export class AnalysisService {
     return { job, version };
   }
 
-  async retryJob(jobId: string): Promise<{ job: AnalysisJob; version: DatasetVersion }> {
+  async retryJob(jobId: string, userId?: string): Promise<{ job: AnalysisJob; version: DatasetVersion }> {
     const jobRes = await pool.query(`SELECT * FROM analysis_jobs WHERE id = $1`, [jobId]);
     if (jobRes.rows.length === 0) {
       throw new Error('Job not found');
@@ -72,6 +79,13 @@ export class AnalysisService {
     const version = await datasetService.getDatasetVersionById(job.dataset_version_id);
     if (!version) {
       throw new Error('Dataset version not found');
+    }
+
+    if (userId) {
+      const ownerRes = await pool.query(`SELECT user_id FROM datasets WHERE id = $1`, [version.dataset_id]);
+      if (ownerRes.rows.length === 0 || ownerRes.rows[0].user_id !== userId) {
+        throw new Error('FORBIDDEN: You do not have permission to retry this job.');
+      }
     }
 
     // Reset job state to PENDING in PostgreSQL

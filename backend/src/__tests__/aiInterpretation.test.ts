@@ -3,7 +3,8 @@ import app from '../app';
 import { aiInterpretationService } from '../services/aiInterpretationService';
 import { datasetService } from '../services/datasetService';
 import { analysisService } from '../services/analysisService';
-import { comparisonService } from '../services/comparisonService';
+import { pool } from '../services/db';
+import { authService } from '../services/authService';
 
 jest.mock('../services/queueService', () => ({
   analysisQueue: { add: jest.fn(), getJob: jest.fn() },
@@ -12,6 +13,19 @@ jest.mock('../services/queueService', () => ({
 }));
 
 describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
+  let testToken: string;
+
+  beforeAll(() => {
+    testToken = authService.generateToken({
+      id: '00000000-0000-0000-0000-000000000001',
+      email: 'demo@datalens.internal',
+      name: 'System Demo Account',
+      role: 'USER',
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
+  });
+
   describe('Sanitized Input & Fallback Logic (Pure Unit Tests)', () => {
     test('buildSanitizedInput should filter findings down to compact metadata without raw records', () => {
       const fakeAnalysisRecord: any = {
@@ -130,8 +144,12 @@ describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
       const datasetId = '11111111-1111-1111-1111-111111111111';
       const versionId = '22222222-2222-2222-2222-222222222222';
 
+      (jest.spyOn(pool, 'query') as jest.Mock).mockResolvedValueOnce({
+        rows: [{ user_id: '00000000-0000-0000-0000-000000000001' }],
+      });
+
       jest.spyOn(datasetService, 'getDatasetById').mockResolvedValueOnce({
-        dataset: { id: datasetId, name: 'Mock Dataset', description: 'Test', created_at: '', updated_at: '' },
+        dataset: { id: datasetId, name: 'Mock Dataset', description: 'Test', user_id: '00000000-0000-0000-0000-000000000001', created_at: '', updated_at: '' },
         versions: [
           { id: versionId, dataset_id: datasetId, version_number: 1, original_filename: 'v1.csv', stored_filename: 'v1.csv', checksum: 'hash', file_size_bytes: 100, mime_type: 'text/csv', created_at: '' }
         ]
@@ -154,6 +172,7 @@ describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
 
       const res = await request(app)
         .post(`/api/v1/datasets/${datasetId}/ai-interpretation`)
+        .set('Authorization', `Bearer ${testToken}`)
         .send({ version_id: versionId });
 
       expect(res.status).toBe(200);
@@ -164,10 +183,13 @@ describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
     });
 
     test('POST /api/v1/datasets/:id/ai-interpretation should return 404 for nonexistent dataset', async () => {
-      jest.spyOn(datasetService, 'getDatasetById').mockResolvedValueOnce(null);
+      (jest.spyOn(pool, 'query') as jest.Mock).mockResolvedValueOnce({
+        rows: [],
+      });
 
       const res = await request(app)
-        .post(`/api/v1/datasets/00000000-0000-0000-0000-000000000000/ai-interpretation`);
+        .post(`/api/v1/datasets/00000000-0000-0000-0000-000000000000/ai-interpretation`)
+        .set('Authorization', `Bearer ${testToken}`);
 
       expect(res.status).toBe(404);
       expect(res.body.error).toBe('NOT_FOUND');
@@ -179,7 +201,7 @@ describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
       const v2Id = 'v2-uuid';
 
       jest.spyOn(datasetService, 'getDatasetById').mockResolvedValueOnce({
-        dataset: { id: datasetId, name: 'Versioned Dataset', description: 'Test', created_at: '', updated_at: '' },
+        dataset: { id: datasetId, name: 'Versioned Dataset', description: 'Test', user_id: '00000000-0000-0000-0000-000000000001', created_at: '', updated_at: '' },
         versions: [
           { id: v1Id, dataset_id: datasetId, version_number: 1, original_filename: 'v1.csv', stored_filename: 'v1.csv', checksum: 'h1', file_size_bytes: 100, mime_type: 'text/csv', created_at: '' },
           { id: v2Id, dataset_id: datasetId, version_number: 2, original_filename: 'v2.csv', stored_filename: 'v2.csv', checksum: 'h2', file_size_bytes: 120, mime_type: 'text/csv', created_at: '' },
@@ -213,7 +235,7 @@ describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
       const v2Id = 'v2-uuid';
 
       jest.spyOn(datasetService, 'getDatasetById').mockResolvedValueOnce({
-        dataset: { id: datasetId, name: 'Versioned Dataset', description: 'Test', created_at: '', updated_at: '' },
+        dataset: { id: datasetId, name: 'Versioned Dataset', description: 'Test', user_id: '00000000-0000-0000-0000-000000000001', created_at: '', updated_at: '' },
         versions: [
           { id: v1Id, dataset_id: datasetId, version_number: 1, original_filename: 'v1.csv', stored_filename: 'v1.csv', checksum: 'h1', file_size_bytes: 100, mime_type: 'text/csv', created_at: '' },
           { id: v2Id, dataset_id: datasetId, version_number: 2, original_filename: 'v2.csv', stored_filename: 'v2.csv', checksum: 'h2', file_size_bytes: 120, mime_type: 'text/csv', created_at: '' },
@@ -254,7 +276,7 @@ describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
       };
 
       jest.spyOn(datasetService, 'getDatasetById').mockResolvedValueOnce({
-        dataset: { id: datasetId, name: 'Cached Dataset', description: 'Test', created_at: '', updated_at: '' },
+        dataset: { id: datasetId, name: 'Cached Dataset', description: 'Test', user_id: '00000000-0000-0000-0000-000000000001', created_at: '', updated_at: '' },
         versions: [
           { id: v1Id, dataset_id: datasetId, version_number: 1, original_filename: 'v1.csv', stored_filename: 'v1.csv', checksum: 'h1', file_size_bytes: 100, mime_type: 'text/csv', created_at: '' },
         ]
@@ -283,4 +305,3 @@ describe('Phase 3.3 AI Interpretation & Fallback Unit Tests', () => {
     });
   });
 });
-

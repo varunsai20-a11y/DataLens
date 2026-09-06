@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { analysisService } from '../services/analysisService';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import logger from '../utils/logger';
 
-export const runAnalysis = async (req: Request, res: Response, next: NextFunction) => {
+export const runAnalysis = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const versionId = req.body.version_id || req.body.versionId;
     if (!versionId || typeof versionId !== 'string') {
@@ -12,7 +13,8 @@ export const runAnalysis = async (req: Request, res: Response, next: NextFunctio
       });
     }
 
-    const { job } = await analysisService.createJob(versionId);
+    const userId = req.user?.id;
+    const { job } = await analysisService.createJob(versionId, userId);
 
     res.status(202).json({
       status: 'SUCCESS',
@@ -22,6 +24,12 @@ export const runAnalysis = async (req: Request, res: Response, next: NextFunctio
       message: 'Analysis job created and queued for processing.',
     });
   } catch (err: any) {
+    if (err.message.includes('FORBIDDEN')) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: err.message,
+      });
+    }
     if (err.message === 'Dataset version not found') {
       return res.status(404).json({
         error: 'NOT_FOUND',
@@ -38,10 +46,11 @@ export const runAnalysis = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const retryJob = async (req: Request, res: Response, next: NextFunction) => {
+export const retryJob = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { job_id } = req.params;
-    const { job } = await analysisService.retryJob(job_id);
+    const userId = req.user?.id;
+    const { job } = await analysisService.retryJob(job_id, userId);
 
     res.status(200).json({
       status: 'SUCCESS',
@@ -50,6 +59,12 @@ export const retryJob = async (req: Request, res: Response, next: NextFunction) 
       message: 'Analysis job reset and re-queued for processing.',
     });
   } catch (err: any) {
+    if (err.message.includes('FORBIDDEN')) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: err.message,
+      });
+    }
     if (err.message === 'Job not found' || err.message === 'Dataset version not found') {
       return res.status(404).json({
         error: 'NOT_FOUND',

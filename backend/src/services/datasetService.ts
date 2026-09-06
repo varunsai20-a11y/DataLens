@@ -5,6 +5,7 @@ export interface Dataset {
   id: string;
   name: string;
   description: string | null;
+  user_id?: string;
   created_at: string;
   updated_at: string;
   version_count?: number;
@@ -40,26 +41,43 @@ function mapVersionRow(row: any): DatasetVersion {
 }
 
 export class DatasetService {
-  async createDataset(name: string, description?: string): Promise<Dataset> {
+  async createDataset(name: string, description?: string, userId?: string): Promise<Dataset> {
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error('Dataset name is required');
     }
 
+    const defaultUserId = userId || '00000000-0000-0000-0000-000000000001';
+
     const res = await pool.query(
-      `INSERT INTO datasets (name, description)
-       VALUES ($1, $2)
-       RETURNING id, name, description, created_at, updated_at`,
-      [trimmedName, description ? description.trim() : null]
+      `INSERT INTO datasets (name, description, user_id)
+       VALUES ($1, $2, $3)
+       RETURNING id, name, description, user_id, created_at, updated_at`,
+      [trimmedName, description ? description.trim() : null, defaultUserId]
     );
 
-    logger.info(`Created dataset: ${res.rows[0].id} (${trimmedName})`);
+    logger.info(`Created dataset: ${res.rows[0].id} (${trimmedName}) for user ${defaultUserId}`);
     return res.rows[0];
   }
 
-  async listDatasets(): Promise<Dataset[]> {
+  async listDatasets(userId?: string): Promise<Dataset[]> {
+    if (userId) {
+      const res = await pool.query(
+        `SELECT d.id, d.name, d.description, d.user_id, d.created_at, d.updated_at,
+                COUNT(v.id)::int as version_count,
+                MAX(v.version_number)::int as latest_version
+         FROM datasets d
+         LEFT JOIN dataset_versions v ON d.id = v.dataset_id
+         WHERE d.user_id = $1
+         GROUP BY d.id
+         ORDER BY d.updated_at DESC`,
+        [userId]
+      );
+      return res.rows;
+    }
+
     const res = await pool.query(
-      `SELECT d.id, d.name, d.description, d.created_at, d.updated_at,
+      `SELECT d.id, d.name, d.description, d.user_id, d.created_at, d.updated_at,
               COUNT(v.id)::int as version_count,
               MAX(v.version_number)::int as latest_version
        FROM datasets d
@@ -70,13 +88,13 @@ export class DatasetService {
     return res.rows;
   }
 
-  async getDatasetById(id: string): Promise<{ dataset: Dataset; versions: DatasetVersion[] } | null> {
-    const datasetRes = await pool.query(
-      `SELECT id, name, description, created_at, updated_at
-       FROM datasets
-       WHERE id = $1`,
-      [id]
-    );
+  async getDatasetById(id: string, userId?: string): Promise<{ dataset: Dataset; versions: DatasetVersion[] } | null> {
+    const datasetQuery = userId
+      ? `SELECT id, name, description, user_id, created_at, updated_at FROM datasets WHERE id = $1 AND user_id = $2`
+      : `SELECT id, name, description, user_id, created_at, updated_at FROM datasets WHERE id = $1`;
+    const queryParams = userId ? [id, userId] : [id];
+
+    const datasetRes = await pool.query(datasetQuery, queryParams);
 
     if (datasetRes.rows.length === 0) {
       return null;
@@ -97,6 +115,16 @@ export class DatasetService {
     };
   }
 
+  async deleteDataset(id: string, userId?: string): Promise<boolean> {
+    const query = userId
+      ? `DELETE FROM datasets WHERE id = $1 AND user_id = $2`
+      : `DELETE FROM datasets WHERE id = $1`;
+    const params = userId ? [id, userId] : [id];
+
+    const res = await pool.query(query, params);
+    return (res.rowCount ?? 0) > 0;
+  }
+
   async createDatasetVersion(
     datasetId: string,
     originalFilename: string,
@@ -104,14 +132,20 @@ export class DatasetService {
     storagePath: string,
     checksum: string,
     fileSizeBytes: number,
-    mimeType?: string
+    mimeType?: string,
+    userId?: string
   ): Promise<DatasetVersion> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
-      // Verify dataset exists
-      const checkRes = await client.query('SELECT id FROM datasets WHERE id = $1 FOR UPDATE', [datasetId]);
+      // Verify dataset exists and matches user_id if provided
+      const checkQuery = userId
+        ? 'SELECT id, user_id FROM datasets WHERE id = $1 AND user_id = $2 FOR UPDATE'
+        : 'SELECT id, user_id FROM datasets WHERE id = $1 FOR UPDATE';
+      const checkParams = userId ? [datasetId, userId] : [datasetId];
+
+      const checkRes = await client.query(checkQuery, checkParams);
       if (checkRes.rows.length === 0) {
         throw new Error('Dataset not found');
       }

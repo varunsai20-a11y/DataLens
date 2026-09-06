@@ -18,7 +18,8 @@ export class ComparisonService {
   async compareVersions(
     datasetId: string,
     baseVersionId: string,
-    targetVersionId: string
+    targetVersionId: string,
+    userId?: string
   ): Promise<VersionComparisonRecord> {
     if (baseVersionId === targetVersionId) {
       throw new Error('Base version and target version cannot be identical');
@@ -41,6 +42,19 @@ export class ComparisonService {
 
     if (!baseVersion || !targetVersion) {
       throw new Error('Base or target dataset version not found');
+    }
+
+    // 3. Defense-in-depth: Verify dataset ownership for both base and target versions
+    if (userId) {
+      const ownerCheck = await pool.query(
+        `SELECT id, user_id FROM datasets WHERE id IN ($1, $2)`,
+        [baseVersion.dataset_id, targetVersion.dataset_id]
+      );
+      for (const row of ownerCheck.rows) {
+        if (row.user_id !== userId) {
+          throw new Error('FORBIDDEN: You do not have permission to access one or both versions in this comparison.');
+        }
+      }
     }
 
     const baseAnalysis = await analysisService.getLatestAnalysisForVersion(baseVersionId);

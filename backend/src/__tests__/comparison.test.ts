@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../app';
 import { pool } from '../services/db';
 import { runMigrations } from '../db/migrator';
+import { authService } from '../services/authService';
 
 jest.mock('../services/queueService', () => ({
   analysisQueue: { add: jest.fn(), getJob: jest.fn() },
@@ -13,13 +14,23 @@ describe('Phase 3.2 Comparison & History API Tests', () => {
   let datasetId: string;
   let v1Id: string;
   let v2Id: string;
+  let testToken: string;
 
   beforeAll(async () => {
     await runMigrations();
 
+    testToken = authService.generateToken({
+      id: '00000000-0000-0000-0000-000000000001',
+      email: 'demo@datalens.internal',
+      name: 'System Demo Account',
+      role: 'USER',
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
+
     // 1. Create dataset
     const dsRes = await pool.query(
-      `INSERT INTO datasets (name, description) VALUES ('Phase 3.2 Comparison Dataset', 'Test') RETURNING id`
+      `INSERT INTO datasets (name, description, user_id) VALUES ('Phase 3.2 Comparison Dataset', 'Test', '00000000-0000-0000-0000-000000000001') RETURNING id`
     );
     datasetId = dsRes.rows[0].id;
 
@@ -70,7 +81,9 @@ describe('Phase 3.2 Comparison & History API Tests', () => {
   });
 
   test('GET /api/v1/datasets/:id/history should return dataset quality timeline', async () => {
-    const res = await request(app).get(`/api/v1/datasets/${datasetId}/history`);
+    const res = await request(app)
+      .get(`/api/v1/datasets/${datasetId}/history`)
+      .set('Authorization', `Bearer ${testToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('SUCCESS');
@@ -88,6 +101,7 @@ describe('Phase 3.2 Comparison & History API Tests', () => {
   test('POST /api/v1/datasets/:id/compare should reject identical versions', async () => {
     const res = await request(app)
       .post(`/api/v1/datasets/${datasetId}/compare`)
+      .set('Authorization', `Bearer ${testToken}`)
       .send({ base_version_id: v1Id, target_version_id: v1Id });
 
     expect(res.status).toBe(400);
@@ -97,6 +111,7 @@ describe('Phase 3.2 Comparison & History API Tests', () => {
   test('POST /api/v1/datasets/:id/compare should reject missing versions', async () => {
     const res = await request(app)
       .post(`/api/v1/datasets/${datasetId}/compare`)
+      .set('Authorization', `Bearer ${testToken}`)
       .send({ base_version_id: v1Id });
 
     expect(res.status).toBe(400);

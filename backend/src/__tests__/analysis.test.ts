@@ -6,6 +6,7 @@ import { pool } from '../services/db';
 import { redisClient } from '../services/redis';
 import { runMigrations } from '../db/migrator';
 import { analysisService } from '../services/analysisService';
+import { authService } from '../services/authService';
 
 jest.mock('../services/queueService', () => ({
   analysisQueue: { add: jest.fn(), getJob: jest.fn() },
@@ -17,6 +18,7 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   let datasetId: string;
   let versionId: string;
   let jobId: string;
+  let testToken: string;
   const testCsvPath = path.join(__dirname, 'test_analysis_sample.csv');
 
   const mockReport = {
@@ -73,18 +75,29 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   beforeAll(async () => {
     await runMigrations();
 
+    testToken = authService.generateToken({
+      id: '00000000-0000-0000-0000-000000000001',
+      email: 'demo@datalens.internal',
+      name: 'System Demo Account',
+      role: 'USER',
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
+
     // Create a sample CSV
     fs.writeFileSync(testCsvPath, 'id,name,salary\n1,Alice,50000\n2,Bob,60000\n');
 
     // Create a dataset
     const dsRes = await request(app)
       .post('/api/v1/datasets')
+      .set('Authorization', `Bearer ${testToken}`)
       .send({ name: 'Analysis Test Dataset' });
     datasetId = dsRes.body.dataset.id;
 
     // Upload a version
     const verRes = await request(app)
       .post(`/api/v1/datasets/${datasetId}/upload`)
+      .set('Authorization', `Bearer ${testToken}`)
       .attach('file', testCsvPath);
     versionId = verRes.body.version.id;
   });
@@ -98,7 +111,10 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   });
 
   test('POST /api/v1/analysis/run should reject missing version_id', async () => {
-    const res = await request(app).post('/api/v1/analysis/run').send({});
+    const res = await request(app)
+      .post('/api/v1/analysis/run')
+      .set('Authorization', `Bearer ${testToken}`)
+      .send({});
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('INVALID_INPUT');
   });
@@ -106,6 +122,7 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   test('POST /api/v1/analysis/run should reject non-existent version_id', async () => {
     const res = await request(app)
       .post('/api/v1/analysis/run')
+      .set('Authorization', `Bearer ${testToken}`)
       .send({ version_id: '00000000-0000-0000-0000-000000000000' });
     expect(res.status).toBe(404);
   });
@@ -116,6 +133,7 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
 
     const res = await request(app)
       .post('/api/v1/analysis/run')
+      .set('Authorization', `Bearer ${testToken}`)
       .send({ version_id: versionId });
 
     expect(res.status).toBe(202);
@@ -128,7 +146,10 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   });
 
   test('GET /api/v1/analysis/status/:job_id should return job status', async () => {
-    const res = await request(app).get(`/api/v1/analysis/status/${jobId}`);
+    const res = await request(app)
+      .get(`/api/v1/analysis/status/${jobId}`)
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('SUCCESS');
     expect(res.body.job.id).toBe(jobId);
@@ -136,7 +157,10 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   });
 
   test('GET /api/v1/analysis/results/:job_id should return 202 while job is pending/processing', async () => {
-    const res = await request(app).get(`/api/v1/analysis/results/${jobId}`);
+    const res = await request(app)
+      .get(`/api/v1/analysis/results/${jobId}`)
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(res.status).toBe(202);
     expect(res.body.status).toBe('PENDING');
   });
@@ -154,7 +178,9 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
     expect(res.body.status).toBe('ACKNOWLEDGED');
 
     // Verify job is now COMPLETED
-    const statusRes = await request(app).get(`/api/v1/analysis/status/${jobId}`);
+    const statusRes = await request(app)
+      .get(`/api/v1/analysis/status/${jobId}`)
+      .set('Authorization', `Bearer ${testToken}`);
     expect(statusRes.body.job.status).toBe('COMPLETED');
   });
 
@@ -172,7 +198,10 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   });
 
   test('GET /api/v1/analysis/results/:job_id should return full stored analysis report', async () => {
-    const res = await request(app).get(`/api/v1/analysis/results/${jobId}`);
+    const res = await request(app)
+      .get(`/api/v1/analysis/results/${jobId}`)
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('SUCCESS');
     expect(res.body.result).toHaveProperty('overall_quality_score');
@@ -182,7 +211,10 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
   });
 
   test('GET /api/v1/dataset-versions/:versionId/analysis should return latest analysis', async () => {
-    const res = await request(app).get(`/api/v1/dataset-versions/${versionId}/analysis`);
+    const res = await request(app)
+      .get(`/api/v1/analysis/versions/${versionId}/analysis`)
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('SUCCESS');
     expect(res.body.result.job_id).toBe(jobId);
@@ -194,6 +226,7 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
     // Create a new job to fail
     const jobRes = await request(app)
       .post('/api/v1/analysis/run')
+      .set('Authorization', `Bearer ${testToken}`)
       .send({ version_id: versionId });
     const failJobId = jobRes.body.job_id;
 
@@ -207,7 +240,10 @@ describe('Checkpoint 2: Analysis Backend and Job Lifecycle Tests', () => {
 
     expect(res.status).toBe(200);
 
-    const statusRes = await request(app).get(`/api/v1/analysis/status/${failJobId}`);
+    const statusRes = await request(app)
+      .get(`/api/v1/analysis/status/${failJobId}`)
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(statusRes.body.job.status).toBe('FAILED');
     expect(statusRes.body.job.error_message).toBe('Corrupted CSV structure at line 4');
 

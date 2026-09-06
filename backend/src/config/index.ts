@@ -6,7 +6,9 @@ export const config = {
   port: process.env.PORT || 8080,
   env: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info',
-  storagePath: process.env.STORAGE_PATH || '/app/storage',
+  get storagePath() {
+    return process.env.STORAGE_PATH || './storage';
+  },
   dataEngineUrl: process.env.DATA_ENGINE_URL || 'http://data-engine:5000',
   maxUploadSizeBytes: parseInt(process.env.MAX_UPLOAD_SIZE_MB || '100', 10) * 1024 * 1024,
   postgres: {

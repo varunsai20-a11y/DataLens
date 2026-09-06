@@ -5,9 +5,11 @@ import app from '../app';
 import { pool } from '../services/db';
 import { redisClient } from '../services/redis';
 import { runMigrations } from '../db/migrator';
+import { authService } from '../services/authService';
 
 describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   let createdDatasetId: string;
+  let testToken: string;
   const testCsvPath = path.join(__dirname, 'test_sample.csv');
   const testEmptyCsvPath = path.join(__dirname, 'test_empty.csv');
   const testInvalidExtPath = path.join(__dirname, 'test_invalid.txt');
@@ -17,6 +19,15 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
     fs.writeFileSync(testCsvPath, 'id,name,age\n1,Alice,30\n2,Bob,25\n3,Charlie,35\n');
     fs.writeFileSync(testEmptyCsvPath, '');
     fs.writeFileSync(testInvalidExtPath, 'some text content');
+
+    testToken = authService.generateToken({
+      id: '00000000-0000-0000-0000-000000000001',
+      email: 'demo@datalens.internal',
+      name: 'System Demo Account',
+      role: 'USER',
+      is_system: true,
+      created_at: new Date().toISOString(),
+    });
   });
 
   afterAll(async () => {
@@ -33,6 +44,7 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   test('POST /api/v1/datasets should create a new dataset', async () => {
     const res = await request(app)
       .post('/api/v1/datasets')
+      .set('Authorization', `Bearer ${testToken}`)
       .send({
         name: 'Customer Retention Q3',
         description: 'Dataset containing customer demographics and churn',
@@ -50,6 +62,7 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   test('POST /api/v1/datasets should reject missing name', async () => {
     const res = await request(app)
       .post('/api/v1/datasets')
+      .set('Authorization', `Bearer ${testToken}`)
       .send({ description: 'No name provided' });
 
     expect(res.status).toBe(400);
@@ -57,7 +70,10 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   });
 
   test('GET /api/v1/datasets should list all datasets', async () => {
-    const res = await request(app).get('/api/v1/datasets');
+    const res = await request(app)
+      .get('/api/v1/datasets')
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('SUCCESS');
     expect(Array.isArray(res.body.datasets)).toBe(true);
@@ -65,7 +81,10 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   });
 
   test('GET /api/v1/datasets/:id should return dataset details and versions', async () => {
-    const res = await request(app).get(`/api/v1/datasets/${createdDatasetId}`);
+    const res = await request(app)
+      .get(`/api/v1/datasets/${createdDatasetId}`)
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('SUCCESS');
     expect(res.body.dataset.id).toBe(createdDatasetId);
@@ -73,7 +92,10 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   });
 
   test('GET /api/v1/datasets/:id should return 404 for non-existent ID', async () => {
-    const res = await request(app).get('/api/v1/datasets/00000000-0000-0000-0000-000000000000');
+    const res = await request(app)
+      .get('/api/v1/datasets/00000000-0000-0000-0000-000000000000')
+      .set('Authorization', `Bearer ${testToken}`);
+
     expect(res.status).toBe(404);
     expect(res.body.error).toBe('NOT_FOUND');
   });
@@ -81,6 +103,7 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   test('POST /api/v1/datasets/:id/upload should upload a valid CSV version', async () => {
     const res = await request(app)
       .post(`/api/v1/datasets/${createdDatasetId}/upload`)
+      .set('Authorization', `Bearer ${testToken}`)
       .attach('file', testCsvPath);
 
     expect(res.status).toBe(201);
@@ -95,6 +118,7 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   test('POST /api/v1/datasets/:id/upload should increment version number on second upload', async () => {
     const res = await request(app)
       .post(`/api/v1/datasets/${createdDatasetId}/upload`)
+      .set('Authorization', `Bearer ${testToken}`)
       .attach('file', testCsvPath);
 
     expect(res.status).toBe(201);
@@ -104,6 +128,7 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   test('POST /api/v1/datasets/:id/upload should reject unsupported file format', async () => {
     const res = await request(app)
       .post(`/api/v1/datasets/${createdDatasetId}/upload`)
+      .set('Authorization', `Bearer ${testToken}`)
       .attach('file', testInvalidExtPath)
       .catch((err) => err.response);
 
@@ -113,6 +138,7 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   test('POST /api/v1/datasets/:id/upload should reject empty file', async () => {
     const res = await request(app)
       .post(`/api/v1/datasets/${createdDatasetId}/upload`)
+      .set('Authorization', `Bearer ${testToken}`)
       .attach('file', testEmptyCsvPath);
 
     expect(res.status).toBe(400);
@@ -122,6 +148,7 @@ describe('Checkpoint 1: Dataset API and Storage Tests', () => {
   test('POST /api/v1/datasets/:id/upload should return 404 for non-existent dataset', async () => {
     const res = await request(app)
       .post('/api/v1/datasets/00000000-0000-0000-0000-000000000000/upload')
+      .set('Authorization', `Bearer ${testToken}`)
       .attach('file', testCsvPath);
 
     expect(res.status).toBe(404);
