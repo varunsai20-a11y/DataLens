@@ -12,6 +12,8 @@ import { handleEngineCallback, getVersionAnalysis } from './controllers/analysis
 
 import { authenticateToken } from './middleware/authMiddleware';
 import { requireDatasetOwnership } from './middleware/ownershipMiddleware';
+import { validateRequest } from './middleware/validationMiddleware';
+import { versionIdParamSchema } from './middleware/schemas';
 
 const app = express();
 
@@ -36,7 +38,7 @@ app.use('/api/v1/datasets', datasetRoutes);
 
 app.use('/api/v1/analysis', analysisRoutes);
 app.post('/api/v1/engine/callback', handleEngineCallback);
-app.get('/api/v1/dataset-versions/:versionId/analysis', authenticateToken as any, requireDatasetOwnership as any, getVersionAnalysis as any);
+app.get('/api/v1/dataset-versions/:versionId/analysis', authenticateToken as any, validateRequest(versionIdParamSchema) as any, requireDatasetOwnership as any, getVersionAnalysis as any);
 
 // Backward compatibility / convenience routes
 app.get('/api/datasets', (req, res) => res.redirect(307, '/api/v1/datasets'));

@@ -23,7 +23,10 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
 
-  if (err instanceof multer.MulterError) {
+  if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
+    statusCode = 400;
+    message = 'Malformed JSON in request body.';
+  } else if (err instanceof multer.MulterError) {
     statusCode = 400;
     message = `File upload error: ${err.message}`;
   } else if (err.message && err.message.startsWith('INVALID_FILE_TYPE')) {
@@ -35,8 +38,10 @@ export const globalErrorHandler = (err: any, req: Request, res: Response, next: 
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
 
+  const errorType = statusCode === 400 ? 'INVALID_INPUT' : statusCode === 429 ? 'TOO_MANY_REQUESTS' : statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST';
+
   res.status(statusCode).json({
-    error: statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST',
+    error: errorType,
     message,
     requestId: req.headers['x-request-id'],
   });
