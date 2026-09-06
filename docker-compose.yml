@@ -1,0 +1,131 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: datalens-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datalens-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: datalens-redis
+    environment:
+      - REDIS_PORT=6379
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datalens-net
+
+  backend:
+    build: ./backend
+    container_name: datalens-backend
+    ports:
+      - "${PORT}:8080"
+    environment:
+      PORT: ${PORT}
+      NODE_ENV: ${NODE_ENV}
+      LOG_LEVEL: ${LOG_LEVEL}
+      STORAGE_PATH: ${STORAGE_PATH}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATA_ENGINE_URL: http://data-engine:5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - data_storage:/app/storage
+    networks:
+      - datalens-net
+
+  worker:
+    build: ./backend
+    container_name: datalens-worker
+    command: npm run worker
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      LOG_LEVEL: ${LOG_LEVEL}
+      STORAGE_PATH: ${STORAGE_PATH}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATA_ENGINE_URL: http://data-engine:5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      data-engine:
+        condition: service_started
+    volumes:
+      - data_storage:/app/storage
+    networks:
+      - datalens-net
+
+  data-engine:
+    build: ./data-engine
+    container_name: datalens-engine
+    ports:
+      - "${ENGINE_PORT}:5000"
+    environment:
+      ENGINE_PORT: ${ENGINE_PORT}
+      ENGINE_ENV: ${ENGINE_ENV}
+      STORAGE_PATH: ${STORAGE_PATH}
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - data_storage:/app/storage
+    networks:
+      - datalens-net
+
+  frontend:
+    build: ./frontend
+    container_name: datalens-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    depends_on:
+      - backend
+    networks:
+      - datalens-net
+
+networks:
+  datalens-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  data_storage:
