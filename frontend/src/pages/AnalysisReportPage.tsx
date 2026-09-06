@@ -7,6 +7,7 @@ import { KPISummary } from '../components/KPISummary';
 import { ProfilingTable } from '../components/ProfilingTable';
 import { AnomaliesList } from '../components/AnomaliesList';
 import { RecommendationsPanel } from '../components/RecommendationsPanel';
+import { AIInterpretationCard } from '../components/AIInterpretationCard';
 
 export const AnalysisReportPage: React.FC = () => {
   const { jobId: routeJobId, versionId: routeVersionId } = useParams<{ jobId?: string; versionId?: string }>();
@@ -88,7 +89,12 @@ export const AnalysisReportPage: React.FC = () => {
         </button>
       </div>
 
+      {result.ai_summary && (
+        <AIInterpretationCard interpretation={result.ai_summary} />
+      )}
+
       <div className="score-card">
+
         <QualityScoreCard
           score={result.overall_quality_score}
           dimensions={result.dimensions}

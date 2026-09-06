@@ -6,6 +6,7 @@ import {
   AnalysisResult,
   VersionComparison,
   QualityHistoryItem,
+  AIInterpretation,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
@@ -111,4 +112,13 @@ export const api = {
     const res = await apiClient.get(`/v1/datasets/${datasetId}/history`);
     return res.data.history || [];
   },
+
+  // Phase 3.3 AI Interpretation
+  async getAIInterpretation(datasetId: string, versionId?: string): Promise<AIInterpretation> {
+    const res = await apiClient.post(`/v1/datasets/${datasetId}/ai-interpretation`, {
+      version_id: versionId,
+    });
+    return res.data.interpretation;
+  },
 };
+

@@ -1,5 +1,5 @@
-import React from 'react';
 import { VersionComparison } from '../types';
+import { AIInterpretationCard } from './AIInterpretationCard';
 
 interface VersionComparisonViewProps {
   comparison: VersionComparison;
@@ -36,6 +36,14 @@ export const VersionComparisonView: React.FC<VersionComparisonViewProps> = ({ co
           </button>
         )}
       </div>
+
+      {/* AI Interpretation Card */}
+      <AIInterpretationCard
+        datasetId={comparison.dataset_id}
+        versionId={comparison.target_version_id}
+        interpretation={comparison.ai_summary}
+      />
+
 
       {/* Health & Drift Summary Banner */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>

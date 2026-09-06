@@ -13,6 +13,7 @@ import {
   getDistributionDrift,
 } from '../controllers/comparisonController';
 import { getDatasetHistory } from '../controllers/historyController';
+import { getAIInterpretation } from '../controllers/aiController';
 
 const router = Router();
 
@@ -29,4 +30,8 @@ router.get('/comparisons/:comparison_id', getComparison);
 router.get('/comparisons/:comparison_id/schema-drift', getSchemaDrift);
 router.get('/comparisons/:comparison_id/distribution-drift', getDistributionDrift);
 
+// Phase 3.3 AI Interpretation Route
+router.post('/:id/ai-interpretation', getAIInterpretation);
+
 export default router;
+

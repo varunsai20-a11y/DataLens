@@ -97,6 +97,15 @@ export interface Recommendation {
   suggestion: string;
 }
 
+export interface AIInterpretation {
+  summary: string;
+  key_findings: string[];
+  likely_causes: string[];
+  recommended_actions: string[];
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  source?: 'OPENAI' | 'FALLBACK';
+}
+
 export interface AnalysisResult {
   id: string;
   job_id: string;
@@ -109,6 +118,7 @@ export interface AnalysisResult {
   quality_checks: QualityIssue[];
   outliers: OutlierReport[];
   recommendations: Recommendation[];
+  ai_summary?: AIInterpretation;
   created_at: string;
 }
 
@@ -168,6 +178,7 @@ export interface VersionComparison {
     combined_health_score?: number;
     health_status?: string;
   };
+  ai_summary?: AIInterpretation;
   created_at: string;
 }
 
@@ -186,3 +197,4 @@ export interface QualityHistoryItem {
   issue_count: number;
   anomaly_count: number;
 }
+
