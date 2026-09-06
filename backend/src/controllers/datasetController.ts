@@ -9,6 +9,7 @@ import { datasetService } from '../services/datasetService';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import logger from '../utils/logger';
 import { sanitizeFilename, isPathInsideDir, validateFileContent } from '../utils/fileValidation';
+import { auditService } from '../services/auditService';
 
 // Ensure storage directory exists
 if (!fs.existsSync(config.storagePath)) {
@@ -76,6 +77,19 @@ export const createDataset = async (req: AuthenticatedRequest, res: Response, ne
 
     const userId = req.user?.id;
     const dataset = await datasetService.createDataset(name, description, userId);
+
+    auditService.logEvent({
+      userId,
+      action: 'DATASET_CREATE_SUCCESS',
+      resourceType: 'DATASET',
+      resourceId: dataset.id,
+      status: 'SUCCESS',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      requestId: req.headers['x-request-id'] as string,
+      metadata: { name: dataset.name },
+    });
+
     res.status(201).json({
       status: 'SUCCESS',
       dataset,
@@ -133,6 +147,17 @@ export const deleteDataset = async (req: AuthenticatedRequest, res: Response, ne
         message: `Dataset with ID '${datasetId}' was not found.`,
       });
     }
+
+    auditService.logEvent({
+      userId,
+      action: 'DATASET_DELETE_SUCCESS',
+      resourceType: 'DATASET',
+      resourceId: datasetId,
+      status: 'SUCCESS',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      requestId: req.headers['x-request-id'] as string,
+    });
 
     res.status(200).json({
       status: 'SUCCESS',
@@ -205,6 +230,18 @@ export const uploadVersion = async (req: AuthenticatedRequest, res: Response, ne
       mimeType,
       userId
     );
+
+    auditService.logEvent({
+      userId,
+      action: 'DATASET_UPLOAD_SUCCESS',
+      resourceType: 'DATASET_VERSION',
+      resourceId: version.id,
+      status: 'SUCCESS',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      requestId: req.headers['x-request-id'] as string,
+      metadata: { dataset_id: datasetId, filename: version.original_filename, size: version.file_size_bytes },
+    });
 
     res.status(201).json({
       status: 'SUCCESS',

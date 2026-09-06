@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from './authMiddleware';
 import { pool } from '../services/db';
 import logger from '../utils/logger';
+import { auditService } from '../services/auditService';
 
 /**
  * Middleware to enforce dataset ownership access control.
@@ -121,6 +122,19 @@ export const requireDatasetOwnership = async (
 
     if (ownerId !== userId) {
       logger.warn(`Access denied: User ${userId} attempted to access dataset ${datasetId} owned by ${ownerId}`);
+
+      auditService.logEvent({
+        userId,
+        action: 'ACCESS_DENIED',
+        resourceType: 'DATASET',
+        resourceId: datasetId,
+        status: 'REJECTED',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        requestId: req.headers['x-request-id'] as string,
+        metadata: { attempted_dataset_id: datasetId, actual_owner_id: ownerId },
+      });
+
       return res.status(403).json({
         error: 'FORBIDDEN',
         message: 'You do not have permission to access or modify this dataset.',

@@ -1,11 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/authService';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
+import { auditService } from '../services/auditService';
 
 export const registerUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password, name } = req.body;
     const { user, token } = await authService.register(email, password, name);
+
+    auditService.logEvent({
+      userId: user.id,
+      action: 'AUTH_REGISTER_SUCCESS',
+      resourceType: 'USER',
+      resourceId: user.id,
+      status: 'SUCCESS',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      requestId: req.headers['x-request-id'] as string,
+      metadata: { email: user.email },
+    });
 
     res.status(201).json({
       status: 'SUCCESS',
@@ -13,6 +26,15 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
       token,
     });
   } catch (err: any) {
+    auditService.logEvent({
+      action: 'AUTH_REGISTER_FAILED',
+      status: 'FAILED',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      requestId: req.headers['x-request-id'] as string,
+      metadata: { email: req.body?.email },
+    });
+
     if (err.message.startsWith('INVALID_INPUT')) {
       return res.status(400).json({
         error: 'INVALID_INPUT',
@@ -34,12 +56,32 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
     const { email, password } = req.body;
     const { user, token } = await authService.login(email, password);
 
+    auditService.logEvent({
+      userId: user.id,
+      action: 'AUTH_LOGIN_SUCCESS',
+      resourceType: 'USER',
+      resourceId: user.id,
+      status: 'SUCCESS',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      requestId: req.headers['x-request-id'] as string,
+    });
+
     res.status(200).json({
       status: 'SUCCESS',
       user,
       token,
     });
   } catch (err: any) {
+    auditService.logEvent({
+      action: 'AUTH_LOGIN_FAILED',
+      status: 'FAILED',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      requestId: req.headers['x-request-id'] as string,
+      metadata: { email: req.body?.email },
+    });
+
     if (err.message.startsWith('INVALID_CREDENTIALS')) {
       return res.status(401).json({
         error: 'INVALID_CREDENTIALS',

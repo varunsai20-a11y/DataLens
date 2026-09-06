@@ -8,6 +8,7 @@ import { healthCheck, readyCheck } from './controllers/healthController';
 import datasetRoutes from './routes/datasetRoutes';
 import analysisRoutes from './routes/analysisRoutes';
 import authRoutes from './routes/authRoutes';
+import auditRoutes from './routes/auditRoutes';
 import { handleEngineCallback, getVersionAnalysis } from './controllers/analysisController';
 
 import { authenticateToken } from './middleware/authMiddleware';
@@ -35,6 +36,7 @@ app.get('/api/ready', readyCheck);
 // API v1 Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/datasets', datasetRoutes);
+app.use('/api/v1/audit-logs', auditRoutes);
 
 app.use('/api/v1/analysis', analysisRoutes);
 app.post('/api/v1/engine/callback', handleEngineCallback);
