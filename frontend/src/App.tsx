@@ -1,15 +1,86 @@
-function App() {
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Navbar } from './components/Navbar';
+import { DatasetsPage } from './pages/DatasetsPage';
+import { AnalysisReportPage } from './pages/AnalysisReportPage';
+import { AuthPage } from './pages/AuthPage';
+
+const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
+
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '2rem' }}>
-      <h1>DataLens</h1>
-      <p>Infrastructure Phase 1: Foundation Loaded.</p>
-      <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h3>System Status</h3>
-        <p>Frontend: ✅ Running</p>
-        <p>Connecting to: <code style={{ backgroundColor: '#eee', padding: '2px 4px' }}>{import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}</code></p>
-      </div>
+    <div className="app-container">
+      <Navbar currentView="datasets" onNavigate={() => navigate('/')} />
+      <main className="main-content">{children}</main>
     </div>
   );
-}
+};
 
-export default App;
+const AppRoutes: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <AuthPage initialMode="login" />}
+      />
+      <Route
+        path="/register"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <AuthPage initialMode="register" />}
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <DatasetsPage
+                onViewReport={(jobId, versionId) => {
+                  if (jobId) {
+                    navigate(`/report?jobId=${jobId}`);
+                  } else if (versionId) {
+                    navigate(`/report?versionId=${versionId}`);
+                  }
+                }}
+              />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AnalysisReportPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report/:jobId"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <AnalysisReportPage />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}

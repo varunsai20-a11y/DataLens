@@ -198,3 +198,29 @@ export interface QualityHistoryItem {
   anomaly_count: number;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'USER' | 'ADMIN';
+  is_system?: boolean;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  status: 'SUCCESS';
+  token: string;
+  user: User;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterCredentials {
+  email: string;
+  password: string;
+  name?: string;
+}
+

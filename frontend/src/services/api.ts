@@ -7,7 +7,14 @@ import {
   VersionComparison,
   QualityHistoryItem,
   AIInterpretation,
+  User,
+  AuthResponse,
+  LoginCredentials,
+  RegisterCredentials,
 } from '../types';
+
+export const TOKEN_STORAGE_KEY = 'datalens_auth_token';
+export const USER_STORAGE_KEY = 'datalens_auth_user';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
@@ -18,7 +25,45 @@ const apiClient = axios.create({
   },
 });
 
+// Attach JWT token to requests if present in localStorage
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Intercept 401 Unauthorized responses to clear stale credentials
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(USER_STORAGE_KEY);
+      window.dispatchEvent(new CustomEvent('datalens:unauthorized'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const api = {
+  // Authentication
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    const res = await apiClient.post('/v1/auth/login', credentials);
+    return res.data;
+  },
+
+  async register(credentials: RegisterCredentials): Promise<AuthResponse> {
+    const res = await apiClient.post('/v1/auth/register', credentials);
+    return res.data;
+  },
+
+  async getCurrentUser(): Promise<User> {
+    const res = await apiClient.get('/v1/auth/me');
+    return res.data.user;
+  },
+
   // Health & Readiness
   async getHealth(): Promise<{ status: string }> {
     const res = await apiClient.get('/health');
