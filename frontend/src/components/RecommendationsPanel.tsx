@@ -23,7 +23,8 @@ export const RecommendationsPanel: React.FC<RecommendationsPanelProps> = ({ reco
                 {rec.message}
               </div>
               <div className="rec-suggestion">
-                <strong>Suggested Fix:</strong> {rec.suggestion}
+                <span className="rec-suggestion-label">Suggested Fix</span>
+                <span className="rec-suggestion-text">{rec.suggestion}</span>
               </div>
             </div>
           ))

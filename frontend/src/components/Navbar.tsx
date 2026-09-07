@@ -34,10 +34,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
     <header className="navbar">
       <div className="navbar-container">
         <div className="navbar-brand" onClick={() => onNavigate('datasets')}>
-          <div className="brand-logo">🛡️</div>
+          <div className="brand-logo-icon">DL</div>
           <div className="brand-text">
             <span className="brand-title">DataLens</span>
-            <span className="brand-badge">Data Reliability</span>
+            <span className="brand-badge">Mission Control</span>
           </div>
         </div>
 
@@ -46,11 +46,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
             className={`nav-link ${currentView === 'datasets' ? 'active' : ''}`}
             onClick={() => onNavigate('datasets')}
           >
-            Datasets
+            <span>📊</span> Datasets Control
           </button>
         </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
           <div className="navbar-status">
             <span
               className={`status-pill ${
@@ -63,10 +63,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
             >
               <span className="status-dot"></span>
               {readyStatus === 'ready'
-                ? 'Backend: Online'
+                ? 'SYSTEM OPERATIONAL'
                 : readyStatus === 'checking'
-                ? 'Checking...'
-                : 'Backend: Offline'}
+                ? 'CHECKING PROBES...'
+                : 'ENGINE OFFLINE'}
             </span>
           </div>
 
@@ -77,30 +77,37 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
-                  backgroundColor: '#f1f5f9',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.85rem',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-color)',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.825rem',
                   fontWeight: 600,
-                  color: '#334155',
+                  color: '#ffffff',
                 }}
               >
-                <span>👤</span>
+                <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>👤</span>
                 <span>{user.name || user.email}</span>
+                {user.role && (
+                  <span
+                    style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      backgroundColor: 'var(--primary-light)',
+                      color: '#60a5fa',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: 'var(--radius-sm)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {user.role}
+                  </span>
+                )}
               </div>
               <button
                 onClick={logout}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: '1px solid #cbd5e1',
-                  color: '#64748b',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
+                className="btn btn-sm btn-outline"
+                style={{ fontSize: '0.78rem' }}
               >
                 Sign Out
               </button>

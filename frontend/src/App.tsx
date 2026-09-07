@@ -7,6 +7,8 @@ import { DatasetsPage } from './pages/DatasetsPage';
 import { AnalysisReportPage } from './pages/AnalysisReportPage';
 import { AuthPage } from './pages/AuthPage';
 
+import { ErrorBoundary } from './components/ErrorBoundary';
+
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
 
@@ -77,10 +79,12 @@ const AppRoutes: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -210,15 +210,15 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
     <div className="datasets-page">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Datasets</h1>
-          <p className="page-subtitle">Manage dataset versions, track historical quality, and detect schema & statistical drift.</p>
+          <h1 className="page-title">Dataset Control Center</h1>
+          <p className="page-subtitle">Track versions, inspect quality trends, and compute distribution & schema drift across pipelines.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
           + New Dataset
         </button>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="alert alert-error">⚠️ {error}</div>}
 
       {/* Active Analysis Banner */}
       {activeJob && (
@@ -226,12 +226,12 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
           <div className="job-banner-content">
             <span className="job-spinner"></span>
             <div>
-              <strong>Analysis Job: {activeJob.id.slice(0, 8)}...</strong>
+              <strong>Analysis Job: <span className="font-mono">{activeJob.id.slice(0, 8)}...</span></strong>
               <span className="job-status-pill">{activeJob.status}</span>
               <p className="job-status-desc">
-                {activeJob.status === 'PENDING' && 'Job queued in BullMQ...'}
-                {activeJob.status === 'PROCESSING' && 'Worker processing dataset analysis...'}
-                {activeJob.status === 'COMPLETED' && 'Analysis completed!'}
+                {activeJob.status === 'PENDING' && 'Job enqueued in BullMQ worker queue...'}
+                {activeJob.status === 'PROCESSING' && 'Worker executing Python profiling & statistical analysis...'}
+                {activeJob.status === 'COMPLETED' && 'Analysis completed and saved to PostgreSQL!'}
                 {activeJob.status === 'FAILED' && `Analysis failed: ${activeJob.error_message || 'Unknown error'}`}
               </p>
             </div>
@@ -241,25 +241,30 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
               className="btn btn-success"
               onClick={() => onViewReport(activeJob.id, jobVersionId || undefined)}
             >
-              View Report →
+              View Command Report →
             </button>
           )}
         </div>
       )}
 
       <div className="datasets-layout">
-        {/* Left: Datasets List */}
+        {/* Left: Datasets List Sidebar */}
         <div className="datasets-sidebar">
           <div className="sidebar-header">
-            <h3>Registered Datasets ({datasets.length})</h3>
+            <h3>Registered Datasets</h3>
+            <span className="badge badge-primary">{datasets.length} Active</span>
           </div>
           {loading ? (
-            <div className="loading-state">Loading datasets...</div>
+            <div style={{ padding: '1rem' }}>
+              <div className="skeleton" style={{ height: '56px', marginBottom: '8px' }}></div>
+              <div className="skeleton" style={{ height: '56px', marginBottom: '8px' }}></div>
+              <div className="skeleton" style={{ height: '56px' }}></div>
+            </div>
           ) : datasets.length === 0 ? (
-            <div className="empty-state">
-              <p>No datasets registered yet.</p>
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>No datasets registered yet.</p>
               <button className="btn btn-sm btn-primary" onClick={() => setShowCreateModal(true)}>
-                Create First Dataset
+                + Register First Dataset
               </button>
             </div>
           ) : (
@@ -290,8 +295,11 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
             <div>
               <div className="details-header">
                 <div>
-                  <h2>{selectedDataset.name}</h2>
-                  <p className="text-muted">{selectedDataset.description || 'No description provided.'}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>{selectedDataset.name}</h2>
+                    <span className="badge badge-success">ACTIVE</span>
+                  </div>
+                  <p className="text-muted" style={{ marginTop: '0.3rem' }}>{selectedDataset.description || 'No description provided.'}</p>
                   <span className="dataset-id-tag">ID: {selectedDataset.id}</span>
                 </div>
                 <button className="btn btn-secondary" onClick={() => setShowUploadModal(true)}>
@@ -301,62 +309,97 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
 
               {/* Version Comparison Selector */}
               {versions.length >= 2 && (
-                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ margin: '0 0 12px 0' }}>Version Comparison & Drift Analysis</h4>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ backgroundColor: '#111827', padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-md)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <div>
-                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Base Version (V1)</label>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>Version Comparison & Drift Analysis</h4>
+                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Compare structural schema drift and distribution shifts between two versions.</p>
+                    </div>
+                    <span className="badge badge-primary">COMPARE MODE</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem', color: 'var(--text-muted)' }}>BASE VERSION (V1)</label>
                       <select className="form-control" value={baseVersionId} onChange={(e) => setBaseVersionId(e.target.value)}>
                         {versions.map((v) => (
                           <option key={v.id} value={v.id}>
-                            v{v.version_number} - {v.original_filename}
+                            v{v.version_number} - {v.original_filename} ({formatBytes(Number(v.file_size_bytes))})
                           </option>
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label style={{ fontSize: '12px', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Target Version (V2)</label>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, display: 'block', marginBottom: '0.35rem', color: 'var(--text-muted)' }}>TARGET VERSION (V2)</label>
                       <select className="form-control" value={targetVersionId} onChange={(e) => setTargetVersionId(e.target.value)}>
                         {versions.map((v) => (
                           <option key={v.id} value={v.id}>
-                            v{v.version_number} - {v.original_filename}
+                            v{v.version_number} - {v.original_filename} ({formatBytes(Number(v.file_size_bytes))})
                           </option>
                         ))}
                       </select>
                     </div>
                     <div style={{ alignSelf: 'flex-end' }}>
                       <button className="btn btn-primary" onClick={handleCompareVersions} disabled={compareLoading}>
-                        {compareLoading ? 'Comparing...' : 'Compare Versions & Drift'}
+                        {compareLoading ? 'Computing Drift...' : '⚡ Compare Versions & Drift'}
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Active Comparison View */}
-              {activeComparison && (
-                <div style={{ marginBottom: '32px' }}>
-                  <VersionComparisonView comparison={activeComparison} onClose={() => setActiveComparison(null)} />
-                </div>
-              )}
+              {/* Active Comparison View with Stale Consistency Check */}
+              {activeComparison && (() => {
+                const isComparisonStale = Boolean(
+                  activeComparison.base_version_id !== baseVersionId ||
+                  activeComparison.target_version_id !== targetVersionId
+                );
+                const baseVer = versions.find(v => v.id === baseVersionId);
+                const targetVer = versions.find(v => v.id === targetVersionId);
+                const compBaseVer = versions.find(v => v.id === activeComparison.base_version_id);
+                const compTargetVer = versions.find(v => v.id === activeComparison.target_version_id);
+
+                return (
+                  <div style={{ marginBottom: '2rem' }}>
+                    {isComparisonStale && (
+                      <div className="alert alert-warning" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div>
+                          <strong>⚠️ Stale Comparison View:</strong> Selected dropdowns (Base: {baseVer ? `v${baseVer.version_number}` : 'selected'}, Target: {targetVer ? `v${targetVer.version_number}` : 'selected'}) do not match the displayed comparison result below ({compBaseVer ? `v${compBaseVer.version_number}` : 'Base'} → {compTargetVer ? `v${compTargetVer.version_number}` : 'Target'}).
+                        </div>
+                        <button className="btn btn-sm btn-primary" onClick={handleCompareVersions} disabled={compareLoading}>
+                          {compareLoading ? 'Updating...' : '⚡ Update Comparison for Selected'}
+                        </button>
+                      </div>
+                    )}
+                    <VersionComparisonView comparison={activeComparison} onClose={() => setActiveComparison(null)} />
+                  </div>
+                );
+              })()}
 
               {/* Historical Quality Chart */}
               {history.length > 0 && (
-                <div style={{ marginBottom: '32px' }}>
+                <div style={{ marginBottom: '2rem' }}>
                   <HistoricalTrendChart history={history} />
                 </div>
               )}
 
               {/* Version Table */}
               <div className="versions-section">
-                <h3>Version History</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>Version History</h3>
+                  <span className="badge badge-neutral">{versions.length} File Versions</span>
+                </div>
+
                 {loadingVersions ? (
-                  <div className="loading-state">Loading version history...</div>
+                  <div style={{ padding: '1rem' }}>
+                    <div className="skeleton" style={{ height: '40px', marginBottom: '8px' }}></div>
+                    <div className="skeleton" style={{ height: '40px', marginBottom: '8px' }}></div>
+                    <div className="skeleton" style={{ height: '40px' }}></div>
+                  </div>
                 ) : versions.length === 0 ? (
-                  <div className="empty-box">
-                    <p>No versions uploaded for this dataset yet.</p>
+                  <div style={{ textAlign: 'center', padding: '2.5rem', backgroundColor: 'var(--bg-app)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>No versions uploaded for this dataset yet.</p>
                     <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
-                      Upload First Version (.csv, .parquet)
+                      + Upload First Version (.csv, .parquet)
                     </button>
                   </div>
                 ) : (
@@ -378,7 +421,7 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
                             <td>
                               <span className="badge badge-primary">v{ver.version_number}</span>
                             </td>
-                            <td className="font-mono">{ver.original_filename}</td>
+                            <td className="font-mono" style={{ fontWeight: 600, color: '#ffffff' }}>{ver.original_filename}</td>
                             <td>{formatBytes(Number(ver.file_size_bytes))}</td>
                             <td className="font-mono text-muted">{ver.checksum.slice(0, 8)}...</td>
                             <td>{new Date(ver.created_at).toLocaleString()}</td>
@@ -407,8 +450,8 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
               </div>
             </div>
           ) : (
-            <div className="empty-box">
-              <p>Select a dataset to view its version history or create a new one.</p>
+            <div style={{ textAlign: 'center', padding: '3rem 1.5rem', color: 'var(--text-muted)' }}>
+              <p>Select a dataset from the sidebar to inspect its history, run analysis, or compare versions.</p>
             </div>
           )}
         </div>
@@ -427,7 +470,7 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
             <form onSubmit={handleCreateDataset}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Dataset Name *</label>
+                  <label>DATASET NAME *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -439,11 +482,11 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Description</label>
+                  <label>DESCRIPTION</label>
                   <textarea
                     className="form-control"
                     rows={3}
-                    placeholder="Brief summary of dataset contents, source, or purpose"
+                    placeholder="Brief summary of dataset contents, source, or pipeline purpose"
                     value={newDatasetDesc}
                     onChange={(e) => setNewDatasetDesc(e.target.value)}
                   />
@@ -454,7 +497,7 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={createLoading}>
-                  {createLoading ? 'Creating...' : 'Create Dataset'}
+                  {createLoading ? 'Registering...' : 'Create Dataset'}
                 </button>
               </div>
             </form>
@@ -474,9 +517,9 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
             </div>
             <form onSubmit={handleUploadVersion}>
               <div className="modal-body">
-                {uploadError && <div className="alert alert-error">{uploadError}</div>}
+                {uploadError && <div className="alert alert-error">⚠️ {uploadError}</div>}
                 <div className="form-group">
-                  <label>Choose File (.csv or .parquet) *</label>
+                  <label>CHOOSE FILE (.csv or .parquet) *</label>
                   <input
                     type="file"
                     className="form-control"
@@ -484,7 +527,7 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
                     onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
                     required
                   />
-                  <small className="text-muted">Max file size: 100 MB.</small>
+                  <small className="text-muted" style={{ display: 'block', marginTop: '0.35rem' }}>Maximum supported file size: 100 MB.</small>
                 </div>
                 {uploadLoading && (
                   <div className="progress-container">
@@ -498,7 +541,7 @@ export const DatasetsPage: React.FC<DatasetsPageProps> = ({ onViewReport }) => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={uploadLoading || !uploadFile}>
-                  {uploadLoading ? 'Uploading...' : 'Upload Version'}
+                  {uploadLoading ? 'Uploading...' : 'Upload File Version'}
                 </button>
               </div>
             </form>

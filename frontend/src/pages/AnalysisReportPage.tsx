@@ -45,20 +45,29 @@ export const AnalysisReportPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="loading-state">
-        <div className="job-spinner"></div>
-        <p>Fetching analysis results...</p>
+      <div style={{ padding: '2rem 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="job-spinner" style={{ width: '2rem', height: '2rem' }}></div>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', color: '#ffffff' }}>Loading Data Health Command Center...</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Fetching quality metrics, profiling statistics, and anomaly reports...</p>
+          </div>
+        </div>
+        <div className="skeleton" style={{ height: '180px', marginBottom: '1.5rem' }}></div>
+        <div className="skeleton" style={{ height: '220px', marginBottom: '1.5rem' }}></div>
+        <div className="skeleton" style={{ height: '300px' }}></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="empty-box">
-        <h3 className="text-danger">Error Loading Report</h3>
-        <p>{error}</p>
+      <div style={{ textAlign: 'center', padding: '4rem 2rem', backgroundColor: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--danger-border)' }}>
+        <span style={{ fontSize: '2.5rem' }}>⚠️</span>
+        <h3 style={{ fontSize: '1.4rem', color: 'var(--danger-text)', margin: '1rem 0 0.5rem 0' }}>Error Loading Analysis Report</h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '500px', margin: '0 auto 1.5rem auto' }}>{error}</p>
         <button className="btn btn-primary" onClick={() => navigate('/datasets')}>
-          Return to Datasets
+          ← Return to Dataset Control Center
         </button>
       </div>
     );
@@ -66,10 +75,10 @@ export const AnalysisReportPage: React.FC = () => {
 
   if (!result) {
     return (
-      <div className="empty-box">
-        <p>No analysis results found for this target.</p>
+      <div style={{ textAlign: 'center', padding: '4rem 2rem', backgroundColor: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>No analysis results found for this target.</p>
         <button className="btn btn-primary" onClick={() => navigate('/datasets')}>
-          Return to Datasets
+          ← Return to Datasets
         </button>
       </div>
     );
@@ -79,13 +88,17 @@ export const AnalysisReportPage: React.FC = () => {
     <div className="report-grid">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Analysis Report</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+            <span className="badge badge-primary">COMMAND REPORT</span>
+            <span className="dataset-id-tag">VERSION ID: {result.dataset_version_id.slice(0, 8)}...</span>
+          </div>
+          <h1 className="page-title">Data Health Command Center</h1>
           <p className="page-subtitle">
-            Dataset Version: <span className="font-mono">{result.dataset_version_id.slice(0, 8)}...</span>
+            Analyzed using DataLens Engine v{result.analysis_version || '1.0.0'} • Generated {new Date(result.created_at).toLocaleString()}
           </p>
         </div>
         <button className="btn btn-outline" onClick={() => navigate('/datasets')}>
-          ← Back to Datasets
+          ← Back to Control Center
         </button>
       </div>
 
@@ -94,9 +107,8 @@ export const AnalysisReportPage: React.FC = () => {
       )}
 
       <div className="score-card">
-
         <QualityScoreCard
-          score={result.overall_quality_score}
+          score={Number(result.overall_quality_score)}
           dimensions={result.dimensions}
           grade={result.overall_quality_score >= 90 ? 'A' :
                   result.overall_quality_score >= 80 ? 'B' :
@@ -109,7 +121,8 @@ export const AnalysisReportPage: React.FC = () => {
 
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Column Profiling</h3>
+          <h3 className="card-title">1. Column Profiling & Cardinality Statistics</h3>
+          <span className="badge badge-neutral">{result.profiling?.length || 0} Columns</span>
         </div>
         <div className="card-body">
           <ProfilingTable columns={result.profiling} />
@@ -118,7 +131,8 @@ export const AnalysisReportPage: React.FC = () => {
 
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Quality Issues & Anomalies</h3>
+          <h3 className="card-title">2. Quality Issues & Anomaly Detection</h3>
+          <span className="badge badge-warning">{(result.quality_checks?.length || 0) + (result.outliers?.length || 0)} Signals</span>
         </div>
         <div className="card-body">
           <AnomaliesList
@@ -130,7 +144,8 @@ export const AnalysisReportPage: React.FC = () => {
 
       <div className="card">
         <div className="card-header">
-          <h3 className="card-title">Remediation Recommendations</h3>
+          <h3 className="card-title">3. Remediation Recommendations</h3>
+          <span className="badge badge-success">{result.recommendations?.length || 0} Action Items</span>
         </div>
         <div className="card-body">
           <RecommendationsPanel recommendations={result.recommendations} />

@@ -36,7 +36,7 @@ export const AIInterpretationCard: React.FC<AIInterpretationCardProps> = ({
         }
       } catch (err: any) {
         if (isMounted) {
-          setError(err.response?.data?.message || err.message || 'Failed to fetch AI interpretation.');
+          setError(err.response?.data?.message || err.message || 'Failed to fetch DataLens Intelligence summary.');
         }
       } finally {
         if (isMounted) {
@@ -55,22 +55,22 @@ export const AIInterpretationCard: React.FC<AIInterpretationCardProps> = ({
   const getSeverityBadge = (severity: string) => {
     switch (severity?.toUpperCase()) {
       case 'CRITICAL':
-        return <span className="badge badge-error" style={{ background: '#991b1b', color: '#fff', fontWeight: 'bold' }}>CRITICAL SEVERITY</span>;
+        return <span className="badge badge-danger">CRITICAL SEVERITY</span>;
       case 'HIGH':
-        return <span className="badge badge-error" style={{ fontWeight: 'bold' }}>HIGH SEVERITY</span>;
+        return <span className="badge badge-danger">HIGH SEVERITY</span>;
       case 'MEDIUM':
-        return <span className="badge badge-warning" style={{ fontWeight: 'bold' }}>MEDIUM SEVERITY</span>;
+        return <span className="badge badge-warning">MEDIUM SEVERITY</span>;
       default:
-        return <span className="badge badge-success" style={{ fontWeight: 'bold' }}>LOW SEVERITY</span>;
+        return <span className="badge badge-success">LOW SEVERITY</span>;
     }
   };
 
   if (loading) {
     return (
-      <div style={{ background: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="job-spinner" style={{ width: '24px', height: '24px' }}></div>
-          <span style={{ color: '#64748b', fontWeight: 500 }}>Generating AI Data Quality Interpretation...</span>
+      <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.5rem', borderRadius: '14px', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="job-spinner" style={{ width: '1.25rem', height: '1.25rem' }}></div>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>Synthesizing DataLens Intelligence Summary...</span>
         </div>
       </div>
     );
@@ -78,8 +78,8 @@ export const AIInterpretationCard: React.FC<AIInterpretationCardProps> = ({
 
   if (error) {
     return (
-      <div style={{ background: '#fef2f2', padding: '16px 20px', borderRadius: '12px', border: '1px solid #fca5a5', color: '#991b1b', marginBottom: '24px' }}>
-        <strong>AI Interpretation Unavailable:</strong> {error}
+      <div style={{ backgroundColor: 'var(--danger-light)', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid var(--danger-border)', color: 'var(--danger-text)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+        <strong>DataLens Intelligence Notice:</strong> {error}
       </div>
     );
   }
@@ -91,72 +91,70 @@ export const AIInterpretationCard: React.FC<AIInterpretationCardProps> = ({
   const isFallback = data.source === 'FALLBACK';
 
   return (
-    <div style={{ background: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+    <div style={{ backgroundColor: 'var(--bg-card)', padding: '1.75rem', borderRadius: '14px', border: '1px solid var(--primary-border)', marginBottom: '2rem', boxShadow: 'var(--glow-blue)' }}>
       {/* Header Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '20px' }}>🧠</span>
-          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' }}>AI Data Quality Interpretation</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '1rem' }}>
+            🤖
+          </div>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#ffffff' }}>DataLens Intelligence</h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Autonomous Root Cause & Quality Diagnostics</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {getSeverityBadge(data.severity)}
-          <span style={{
-            fontSize: '12px',
-            padding: '4px 10px',
-            borderRadius: '20px',
-            background: isFallback ? '#fef3c7' : '#e0e7ff',
-            color: isFallback ? '#92400e' : '#3730a3',
-            fontWeight: 600
-          }}>
-            {isFallback ? '⚡ Rule-Based Fallback' : '✨ AI (gpt-4o-mini)'}
+          <span className={`badge ${isFallback ? 'badge-warning' : 'badge-primary'}`}>
+            {isFallback ? '⚡ RULE-BASED FALLBACK' : '✨ ACTUAL AI (GPT-4O-MINI)'}
           </span>
         </div>
       </div>
 
-      {/* Summary Box */}
-      <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #2563eb', marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>
-          Executive Summary
+      {/* Executive Summary Box */}
+      <div style={{ backgroundColor: 'var(--bg-app)', padding: '1.15rem 1.25rem', borderRadius: '10px', borderLeft: '4px solid #3b82f6', marginBottom: '1.5rem', border: '1px solid var(--border-color)', borderLeftWidth: '4px' }}>
+        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#60a5fa', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
+          EXECUTIVE SUMMARY
         </div>
-        <p style={{ margin: 0, color: '#334155', fontSize: '15px', lineHeight: '1.6' }}>
+        <p style={{ margin: 0, color: '#f3f4f6', fontSize: '0.95rem', lineHeight: '1.6' }}>
           {data.summary}
         </p>
       </div>
 
       {/* Findings, Causes & Actions Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+      <div className="ai-cards-grid">
         {/* Key Findings */}
-        <div style={{ background: '#fafafa', padding: '16px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ backgroundColor: 'var(--bg-app)', padding: '1.15rem', borderRadius: '10px', border: '1px solid var(--border-color)', minWidth: 0 }}>
+          <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             🔍 Key Findings
           </h4>
-          <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '13px', lineHeight: '1.6' }}>
+          <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
             {data.key_findings.map((finding, idx) => (
-              <li key={idx} style={{ marginBottom: '6px' }}>{finding}</li>
+              <li key={idx} style={{ marginBottom: '0.4rem' }}>{finding}</li>
             ))}
           </ul>
         </div>
 
         {/* Likely Causes */}
-        <div style={{ background: '#fafafa', padding: '16px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ backgroundColor: 'var(--bg-app)', padding: '1.15rem', borderRadius: '10px', border: '1px solid var(--border-color)', minWidth: 0 }}>
+          <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             💡 Likely Root Causes
           </h4>
-          <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '13px', lineHeight: '1.6' }}>
+          <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
             {data.likely_causes.map((cause, idx) => (
-              <li key={idx} style={{ marginBottom: '6px' }}>{cause}</li>
+              <li key={idx} style={{ marginBottom: '0.4rem' }}>{cause}</li>
             ))}
           </ul>
         </div>
 
         {/* Recommended Actions */}
-        <div style={{ background: '#fafafa', padding: '16px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ backgroundColor: 'var(--bg-app)', padding: '1.15rem', borderRadius: '10px', border: '1px solid var(--border-color)', minWidth: 0 }}>
+          <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.875rem', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             🛠️ Recommended Actions
           </h4>
-          <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '13px', lineHeight: '1.6' }}>
+          <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
             {data.recommended_actions.map((action, idx) => (
-              <li key={idx} style={{ marginBottom: '6px' }}>{action}</li>
+              <li key={idx} style={{ marginBottom: '0.4rem' }}>{action}</li>
             ))}
           </ul>
         </div>
